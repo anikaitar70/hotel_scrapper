@@ -4,7 +4,7 @@ const { MAX_REVIEWS } = require('../config');
 module.exports = async function scrapeHotelPage(page, url, cachedPrice = '') 
  {
   await page.goto(url, { waitUntil: 'networkidle2' });
-
+  await page.waitForSelector('body', { timeout: 1000 });
   const address = await page.evaluate(() => {
   const buttons = Array.from(document.querySelectorAll('button'));
   for (const btn of buttons) {
