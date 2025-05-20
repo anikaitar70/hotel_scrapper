@@ -44,15 +44,8 @@ async function main() {
     input: process.stdin,
     output: process.stdout
   });
-  rl.question('\n💾 Do you want to save this data to all_hotel_reviews.xlsx? (y/n): ', answer => {
-    if (answer.toLowerCase() === 'y') {
-      exportToExcel(flattened);
-      console.log('\n✅ File saved as all_hotel_reviews.xlsx');
-    } else {
-      console.log('\n🛑 Skipped saving to Excel.');
-    }
-    rl.close();
-  });
+  exportToExcel(flattened);
+  console.log('\n✅ File saved as all_hotel_reviews.xlsx'); 
 }
 
 main().catch(console.error);
