@@ -1,7 +1,7 @@
 module.exports = {
   CITY: 'Gurugram',
-  MAX_HOTELS: 1000,
-  MAX_REVIEWS: 20,
+  MAX_HOTELS: 100,
+  MAX_REVIEWS: 2,
   MIN:2000,
-  MAx:6000
+  MAX:6000
 };

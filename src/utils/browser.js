@@ -3,13 +3,15 @@ const puppeteer = require('puppeteer');
 const getBrowser = async () => {
   return puppeteer.launch({
     headless: true,
+    defaultViewport: null,
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
       '--disable-dev-shm-usage',
       '--disable-accelerated-2d-canvas',
       '--no-zygote',
-      '--single-process'
+      '--single-process',
+      '--start-maximized'
     ],
   });
 };
