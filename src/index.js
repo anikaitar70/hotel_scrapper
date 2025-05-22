@@ -1,6 +1,6 @@
 // index.js
 const readline = require('readline');
-const { CITY, MAX_HOTELS, MAX_REVIEWS, MIN, MAX } = require('./config');
+const { MAX_HOTELS, MAX_REVIEWS, MIN, MAX } = require('./config');
 const { getBrowser, setUserAgent } = require('./utils/browser');
 const progressBar = require('./utils/progressBar');
 const fetchHotels = require('./scraper/fetchHotels');
@@ -10,9 +10,11 @@ const flattenHotelData = require('./utils/flatten');
 const { insertHotel, closeConnection } = require('./utils/dbHandler');
 const express = require('express');
 const path = require('path');
+
 const app = express();
 const port = process.env.PORT || 3000;
 
+// MongoDB test connection example (kept in comments for now)
 // async function testMongoConnection() {
 //   const dummyHotel = {
 //     hotel_name: 'Connection Test Hotel',
@@ -49,16 +51,21 @@ const port = process.env.PORT || 3000;
 //   }
 // }
 
-//testMongoConnection();
+// testMongoConnection();
 
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/api/hotels', async (req, res) => {
   const location = req.query.location;
+  const checkin = req.query.checkin;
+  const checkout = req.query.checkout;
   const wifiFilter = req.query.wifiFilter || 'all';
 
   if (!location) {
     return res.status(400).json({ error: 'Location parameter is required' });
+  }
+  if (!checkin || !checkout) {
+    return res.status(400).json({ error: 'Check-in and check-out dates are required' });
   }
 
   try {
@@ -66,8 +73,8 @@ app.get('/api/hotels', async (req, res) => {
     const hotelsPage = await browser.newPage();
     await setUserAgent(hotelsPage);
 
-    // Use the location from query param
-    const hotels = await fetchHotels(hotelsPage, location, MAX_HOTELS, MIN, MAX);
+    // Pass location and dates to fetchHotels; update fetchHotels function to accept these params accordingly
+    const hotels = await fetchHotels(hotelsPage, location, MAX_HOTELS, MIN, MAX, checkin, checkout);
     await hotelsPage.close();
 
     const allHotelData = [];
@@ -78,12 +85,12 @@ app.get('/api/hotels', async (req, res) => {
       try {
         await setUserAgent(page);
         console.log(`🎯 [${i + 1}/${hotels.length}] ${name}`);
-        const hotelData = await scrapeHotelPage(page, url, price);
+        const hotelData = await scrapeHotelPage(page, url, price, checkin, checkout);
         allHotelData.push({
           name,
           url,
-          ...hotelData,
-          categoryRatings: hotelData.categoryRatings,
+          price,
+          wifiQuality: hotelData.wifiQuality,
           overallScore,
         });
       } catch (e) {
@@ -95,19 +102,17 @@ app.get('/api/hotels', async (req, res) => {
 
     await browser.close();
 
-    const flattened = flattenHotelData(allHotelData);
-
-    // Apply Wi-Fi quality filter
-    const filtered = flattened.filter((hotel) => {
-      const wifi = (hotel.wifiQuality || '').toLowerCase();
-      if (wifiFilter === 'good') {
-        return wifi.includes('good') || wifi.includes('excellent') || wifi.includes('fast');
-      }
-      if (wifiFilter === 'poor') {
-        return wifi.includes('poor') || wifi.includes('weak') || wifi.includes('disconnect');
-      }
-      return true;
-    });
+    // Filter based on Wi-Fi quality
+    // const filtered = allHotelData.filter((hotel) => {
+    //   const wifi = (hotel.wifiQuality || '').toLowerCase();
+    //   if (wifiFilter === 'good') {
+    //     return wifi.includes('good') || wifi.includes('excellent') || wifi.includes('fast');
+    //   }
+    //   if (wifiFilter === 'poor') {
+    //     return wifi.includes('poor') || wifi.includes('weak') || wifi.includes('disconnect');
+    //   }
+    //   return true;
+    // });
 
     res.json(filtered);
   } catch (error) {
@@ -125,44 +130,51 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-async function main() {
-  const browser = await getBrowser();
-  const hotelsPage = await browser.newPage();
-  await setUserAgent(hotelsPage);
-  const hotels = await fetchHotels(hotelsPage, CITY, MAX_HOTELS, MIN, MAX);
-  await hotelsPage.close();
-  console.log(`Found ${hotels.length} hotels\n`);
-  progressBar.start(hotels.length, 0);
-  const allHotelData = [];
-  for (let i = 0; i < hotels.length; i++) {
-    const { name, url, price, overallScore } = hotels[i];
-    const page = await browser.newPage();
-    try {
-      await setUserAgent(page);
-      console.log(`🎯 [${i + 1}/${hotels.length}] ${name}`);
-      const hotelData = await scrapeHotelPage(page, url, price);
-      allHotelData.push({ name, url, ...hotelData, categoryRatings: hotelData.categoryRatings, overallScore });
-    } catch (e) {
-      console.error(`⚠️ Failed to scrape "${name}": ${e.message}`);
-    } finally {
-      await page.close();
-      progressBar.update(i + 1);
-    }
-  }
-  progressBar.stop();
-  await browser.close();
-  const flattened = flattenHotelData(allHotelData);
-  console.log('\n📋 Sample scraped data:');
-  console.log(JSON.stringify(flattened.slice(0, 3), null, 2));
+// async function main() {
+//   const browser = await getBrowser();
+//   const hotelsPage = await browser.newPage();
+//   await setUserAgent(hotelsPage);
+//   const hotels = await fetchHotels(hotelsPage, CITY, MAX_HOTELS, MIN, MAX);
+//   await hotelsPage.close();
+//   console.log(`Found ${hotels.length} hotels\n`);
+//   progressBar.start(hotels.length, 0);
+//   const allHotelData = [];
+//   for (let i = 0; i < hotels.length; i++) {
+//     const { name, url, price, overallScore } = hotels[i];
+//     const page = await browser.newPage();
+//     try {
+//       await setUserAgent(page);
+//       console.log(`🎯 [${i + 1}/${hotels.length}] ${name}`);
+//       const hotelData = await scrapeHotelPage(page, url, price);
+//       allHotelData.push({
+//         name,
+//         url,
+//         price,
+//         wifiQuality: hotelData.wifiQuality,
+//         overallScore,
+//       });
+//     } catch (e) {
+//       console.error(`⚠️ Failed to scrape "${name}": ${e.message}`);
+//     } finally {
+//       await page.close();
+//       progressBar.update(i + 1);
+//     }
+//   }
+//   progressBar.stop();
+//   await browser.close();
+//   const flattened = flattenHotelData(allHotelData);
+//   console.log('\n📋 Sample scraped data:');
+//   console.log(JSON.stringify(flattened.slice(0, 3), null, 2));
 
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  });
-  exportToExcel(flattened);
-}
+//   const rl = readline.createInterface({
+//     input: process.stdin,
+//     output: process.stdout,
+//   });
 
-main().catch(console.error);
+//   exportToExcel(flattened);
+// }
+
+//main().catch(console.error);
 
 app.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);

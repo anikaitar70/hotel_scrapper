@@ -2,6 +2,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // DOM elements
   const searchForm = document.getElementById("search-form")
   const locationInput = document.getElementById("location")
+  const checkinInput = document.getElementById("checkin-date") // NEW
+  const checkoutInput = document.getElementById("checkout-date") // NEW
   const wifiFilterSelect = document.getElementById("wifi-filter")
   const searchButton = document.getElementById("search-button")
   const errorMessage = document.getElementById("error-message")
@@ -18,10 +20,22 @@ document.addEventListener("DOMContentLoaded", () => {
     e.preventDefault()
 
     const location = locationInput.value.trim()
+    const checkin = checkinInput.value
+    const checkout = checkoutInput.value
     const wifiFilter = wifiFilterSelect.value
 
     if (!location) {
       showError("Please enter a location")
+      return
+    }
+
+    if (!checkin || !checkout) {
+      showError("Please select both check-in and check-out dates")
+      return
+    }
+
+    if (checkin > checkout) {
+      showError("Check-out date must be after check-in date")
       return
     }
 
@@ -31,8 +45,15 @@ document.addEventListener("DOMContentLoaded", () => {
     hideResults()
 
     try {
-      // Fetch hotel data from API
-      const response = await fetch(`/api/hotels?location=${encodeURIComponent(location)}&wifiFilter=${wifiFilter}`)
+      // Fetch hotel data from API with date parameters
+      const queryParams = new URLSearchParams({
+        location,
+        checkin,
+        checkout,
+        wifiFilter
+      })
+
+      const response = await fetch(`/api/hotels?${queryParams.toString()}`)
 
       if (!response.ok) {
         throw new Error("Failed to fetch hotel data")
@@ -50,7 +71,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Display hotel results
   function displayResults(hotels) {
-    // Clear previous results
     hotelResults.innerHTML = ""
 
     if (hotels.length === 0) {
@@ -61,7 +81,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     resultsCount.textContent = `Results (${hotels.length})`
 
-    // Create hotel cards
     hotels.forEach((hotel) => {
       const hotelCard = document.createElement("div")
       hotelCard.className = "hotel-card"
