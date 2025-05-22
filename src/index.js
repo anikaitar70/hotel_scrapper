@@ -53,8 +53,7 @@ const port = process.env.PORT || 3000;
 
 // testMongoConnection();
 
-app.use(express.static(path.join(__dirname, 'public')));
-
+app.use(express.static(path.join(__dirname, '..', 'public')));
 app.get('/api/hotels', async (req, res) => {
   const location = req.query.location;
   const checkin = req.query.checkin;
@@ -125,9 +124,8 @@ app.get('/download', (req, res) => {
   const filePath = './output/myfile.xlsx';
   res.download(filePath, 'hotels.xlsx');
 });
-
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 });
 
 // async function main() {
